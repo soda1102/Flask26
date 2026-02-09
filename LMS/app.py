@@ -149,30 +149,30 @@ def member_edit():
     finally:
         conn.close()
 
-# @app.route('/mypage')  #http://localhost:5000/mypage  get메서드 요청시 처리
-# def mypage():
-#     if 'user_id' not in session:  #로그인상태인지 확인
-#         return redirect(url_for('login'))  #로그인 아니면 http://localhost:5000/login으로 보냄
-#
-#     conn = Session.get_connection()  #db연결
-#     try:
-#         with conn.cursor() as cursor:
-#             #1. 내 상세 정보 조회
-#             cursor.execute("SELECT * FROM members WHERE id = %s", (session['user_id'],))
-#             #로그인한 정보를 가지고 db에서 찾아옴
-#             user_info = cursor.fetchone()
-#
-#             #2. 내가 쓴 게시글 개수 조회(작성한 boards 테이블 활용)
-#             cursor.execute("SELECT COUNT(*) as board_count FROM boards WHERE member_id = %s", (session['user_id'],))
-#             #                                                   boards 테이블에 조건 member_id 값을 가지고 찾아옴
-#             #                갯수를 세어 fetchone()에 넣음 -> board_count 이름으로 갯수를 가지고 있음
-#             board_count = cursor.fetchone()['board_count']
-#
-#             return render_template('mypage.html', user=user_info, board_count=board_count)
-#             #결과를 리턴한다.                     <-    mypage.html 에게 user 객체와 board_count 객체를 담아 보낸
-#             #프론트에서 사용하려면 {{ user.??? }}으로 작성. ex. {{ board_count }}
-#     finally:
-#         conn.close()
+@app.route('/mypage')  #http://localhost:5000/mypage  get메서드 요청시 처리
+def mypage():
+    if 'user_id' not in session:  #로그인상태인지 확인
+        return redirect(url_for('login'))  #로그인 아니면 http://localhost:5000/login으로 보냄
+
+    conn = Session.get_connection()  #db연결
+    try:
+        with conn.cursor() as cursor:
+            #1. 내 상세 정보 조회
+            cursor.execute("SELECT * FROM members WHERE id = %s", (session['user_id'],))
+            #로그인한 정보를 가지고 db에서 찾아옴
+            user_info = cursor.fetchone()
+
+            #2. 내가 쓴 게시글 개수 조회(작성한 boards 테이블 활용)
+            cursor.execute("SELECT COUNT(*) as board_count FROM boards WHERE member_id = %s", (session['user_id'],))
+            #                                                   boards 테이블에 조건 member_id 값을 가지고 찾아옴
+            #                갯수를 세어 fetchone()에 넣음 -> board_count 이름으로 갯수를 가지고 있음
+            board_count = cursor.fetchone()['board_count']
+
+            return render_template('mypage.html', user=user_info, board_count=board_count)
+            #결과를 리턴한다.                     <-    mypage.html 에게 user 객체와 board_count 객체를 담아 보낸
+            #프론트에서 사용하려면 {{ user.??? }}으로 작성. ex. {{ board_count }}
+    finally:
+        conn.close()
 
 
 @app.route('/')  #url 생성 코드(http://localhost:5000/ or http://192.168.0.???:5000)
