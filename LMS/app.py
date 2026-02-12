@@ -7,10 +7,13 @@
 # static : 정적 파일을 모아 놓음(html, css, js)
 # templates : 동적 파일을 모아 놓음(crud 화면, 레이아웃, index 등)
 # redirect : 다음으로
-from flask import Flask, render_template, request, redirect, url_for, session
+import os
+
+from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory
 
 from LMS.common import Session
 from LMS.domain import Board, Score
+from LMS.service import PostService
 
 #                 플라스크    프론트연결     요청,응답   주소전달   주소생성   상태저장소
 
@@ -488,6 +491,93 @@ def score_my():
         conn.close()
 
 #====================================================== Score ======================================================
+
+#==================================================== File Board ====================================================
+
+#파일 처리용 게시판 특징
+#1. 파일 업로드 / 다운로드 가능
+#2. 단일파일 / 다중파일 업로드 처리
+#3. 서비스 패키지 활용
+## 4. /upload 라는 폴더 사용 예정 (용량 제한 : 16MB)
+#5. 파일명 중복 방지용 코드 활용
+#6. DB에서 부모객체가 삭제되면 자식 객체도 삭제되도록 cascade 처리
+
+UPLOAD_FOLDER = 'uploads/'
+#폴더가 없으면 자동 생성
+if not os.path.exists(UPLOAD_FOLDER):  #import os 상단 추가
+    os.makedirs(UPLOAD_FOLDER)
+    #폴더 생성용 코드 : os.makedirs(이름)
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+#최대 업로드 용량 제한 (ex. 16MB)
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+#            bit -> 0,1을 의미
+#            1 byte -> 8bit : 0~255 (256개의 값을 가짐)
+#            1KB -> 1024byte :
+#            1MB -> 1024kbyte
+#            1GB -> 1024Mbyte
+#            1TB -> 1024Gbyte
+#            1PB -> 1024Tbyte
+#            1XB -> 1024Pbyte
+
+#게시글 작성하기(파일첨부)
+@app.route('/filesboard/write', methods=['GET','POST'])
+def filesboard_write():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        title = request.form.get('title')
+        content = request.form.get('content')
+        #핵심 : getlist를 사용해야 리스트 형태로 가져옴!
+        files = request.files.getlist('files')
+
+        if PostService.save_post(session['user_id'], title, content, files):
+            return "<script>alert('게시글이 등록되었습니다.');location.href='/filesboard';</script>"
+
+        else:
+            return "<script>alert('게시글 등록에 실패하였습니다.');history.back();</script>"
+
+    return render_template('filesboard_write.html')
+
+#게시판 목록 확인하기
+@app.route('/filesboard')
+def filesboard_list():
+    posts = PostService.get_posts()
+    return render_template('filesboard_list.html', posts=posts)
+
+# 파일 게시판 상세 보기
+@app.route('/filesboard/view/<int:post_id>')
+def filesboard_view(post_id):
+    post, files = PostService.get_post_detail(post_id)
+    if not post:
+        return "<script>alert('해당 게시글이 없습니다.'); location.href='/filesboard';</script>"
+    return render_template('filesboard_view.html', post=post, files=files)
+
+# send_from_directory 사용하여 자료 다운로드 가능
+@app.route('/download/<path:filename>')
+def download_file(filename):
+    # 파일이 저장된 폴더(uploads)에서 파일을 찾아 전송합니다.
+    # 프론트 <a href="{{ url_for('download_file', filename=file.save_name) }}" ...> 이부분 처리용
+    # filename은 서버에 저장된 save_name입니다.
+    # 브라우저가 다운로드할 때 보여줄 원본 이름을 쿼리 스트링으로 받거나 DB에서 가져와야 합니다.
+    origin_name = request.args.get('origin_name')
+    return send_from_directory('uploads/', filename, as_attachment=True, download_name=origin_name)
+    # from flask import send_from_directory 필수
+
+    #   return send_from_directory('uploads/', filename)는 브라우져에서 바로 열어버림
+    #   as_attachment=True 로 하면 파일 다운로드 창을 띄움
+    #   저장할 파일명은 download_name=origin_name 로 지정
+
+
+#==================================================== File Board ====================================================
+
+
+
+
+
+
+#====================================================== Items ======================================================
 
 @app.route('/')  #url 생성 코드(http://localhost:5000/ or http://192.168.0.???:5000)
 def index():
